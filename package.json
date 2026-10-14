@@ -1,0 +1,13 @@
+{
+  "name": "magpie-synthetic-provider-plugin",
+  "version": "0.1.0",
+  "description": "magpie / OpenCode provider plugin: Synthetic (synthetic.new) with quota reporting",
+  "type": "module",
+  "main": "./index.mjs",
+  "files": ["index.mjs", "README.md"],
+  "keywords": ["opencode", "opencode-plugin", "magpie", "magpie-plugin", "synthetic"],
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test"
+  }
+}
