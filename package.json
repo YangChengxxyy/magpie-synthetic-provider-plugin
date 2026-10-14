@@ -4,10 +4,23 @@
   "description": "magpie / OpenCode provider plugin: Synthetic (synthetic.new) with quota reporting",
   "type": "module",
   "main": "./index.mjs",
-  "files": ["index.mjs", "README.md"],
-  "keywords": ["opencode", "opencode-plugin", "magpie", "magpie-plugin", "synthetic"],
+  "files": [
+    "index.mjs",
+    "README.md",
+    "icon.svg"
+  ],
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "magpie",
+    "magpie-plugin",
+    "synthetic"
+  ],
   "license": "MIT",
   "scripts": {
     "test": "node --test"
+  },
+  "magpie": {
+    "icon": "https://raw.githubusercontent.com/YangChengxxyy/magpie-synthetic-provider-plugin/main/icon.svg"
   }
 }
