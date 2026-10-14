@@ -68,3 +68,18 @@ test("weekly percentRemaining clamps into 0-100 used", () => {
   const { windows: w2 } = quotasToUsage({ weeklyTokenLimit: { percentRemaining: -5 } })
   assert.equal(w2[0].used, 100)
 })
+
+test("live-shaped response: credits display and freeToolCalls lane", () => {
+  const { windows } = quotasToUsage({
+    subscription: { limit: 500, requests: 0, renewsAt: "2026-10-14T13:27:11.450Z" },
+    search: { hourly: { limit: 250, requests: 0, renewsAt: "2026-10-14T09:27:11.452Z" } },
+    freeToolCalls: { limit: 0, requests: 0, renewsAt: "2026-10-15T08:27:11.456Z" },
+    weeklyTokenLimit: { nextRegenAt: "2026-10-14T09:26:30.000Z", percentRemaining: 95.3678005, maxCredits: "$24.00", remainingCredits: "$22.88", nextRegenCredits: "$0.48" },
+    rollingFiveHourLimit: { nextTickAt: "2026-10-14T08:35:01.000Z", tickPercent: 0.05, remaining: 498.2, max: 500, limited: false },
+  })
+  // freeToolCalls.limit is 0 -> no window for it
+  assert.equal(windows.length, 4)
+  const weekly = windows.find((w) => w.name === "weekly")
+  assert.equal(weekly.display, "$22.88 / $24.00 credits")
+  assert.equal(weekly.used, 5) // 100 - 95.37
+})

@@ -22,7 +22,8 @@ const pct = (used, max) => Math.round((used / max) * 100)
 // Response shape (all sections optional):
 //   subscription:        { limit, requests, renewsAt }              legacy per-billing-period counter
 //   search.hourly:       { limit, requests, renewsAt }              search quota, separate lane
-//   weeklyTokenLimit:    { percentRemaining, nextRegenAt }          weekly credit budget
+//   freeToolCalls:       { limit, requests, renewsAt }              free tool-call lane, when granted
+//   weeklyTokenLimit:    { percentRemaining, nextRegenAt, maxCredits, remainingCredits }
 //   rollingFiveHourLimit:{ remaining, max, limited, nextTickAt }    burst request limit
 function quotasToUsage(body) {
   const q = quotaBody(body)
@@ -48,7 +49,22 @@ function quotasToUsage(body) {
       used: Math.round(usedPct),
       resetsAt: weekly.nextRegenAt,
       span: 7 * DAY,
-      display: `${Math.round(weekly.percentRemaining)}% credits remaining`,
+      display:
+        weekly.remainingCredits && weekly.maxCredits
+          ? `${weekly.remainingCredits} / ${weekly.maxCredits} credits`
+          : `${Math.round(weekly.percentRemaining)}% credits remaining`,
+    })
+  }
+
+  const tools = q.freeToolCalls
+  if (tools && typeof tools.limit === "number" && tools.limit > 0) {
+    windows.push({
+      name: "tool calls",
+      used: pct(tools.requests ?? 0, tools.limit),
+      resetsAt: tools.renewsAt,
+      span: DAY,
+      display: `${tools.requests ?? 0} / ${tools.limit} tool calls`,
+      aside: true,
     })
   }
 
