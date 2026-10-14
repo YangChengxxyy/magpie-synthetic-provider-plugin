@@ -24,8 +24,8 @@ magpie quota                    # synthetic · 5h n% ↻… · weekly n% ↻…
 
 ## API used
 
-- Chat: `https://api.synthetic.new/openai/v1` (OpenAI-compatible chat completions)
-- Models: `GET /models` per account, falling back to the `syn:*` aliases
+- Chat: `https://api.synthetic.new/anthropic/v1` (Anthropic Messages; `@ai-sdk/anthropic`)
+- Models: `GET https://api.synthetic.new/openai/v1/models` per account (the anthropic endpoint has no `/models` route), falling back to the `syn:*` aliases
 - Quotas: `GET https://api.synthetic.new/v2/quotas`
 
 ## Development

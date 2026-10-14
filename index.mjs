@@ -1,5 +1,8 @@
 const PROVIDER = "synthetic"
-const BASE = "https://api.synthetic.new/openai/v1"
+const BASE = "https://api.synthetic.new/anthropic/v1"
+// The anthropic endpoint has no /models route; the account model list still
+// comes from the openai-compatible one.
+const MODELS_URL = "https://api.synthetic.new/openai/v1/models"
 const QUOTAS_URL = "https://api.synthetic.new/v2/quotas"
 
 const HOUR = 3600
@@ -110,7 +113,7 @@ export const SyntheticPlugin = async () => ({
     cfg.provider ??= {}
     cfg.provider[PROVIDER] ??= {
       name: "Synthetic",
-      npm: "@ai-sdk/openai-compatible", // chat completions
+      npm: "@ai-sdk/anthropic", // anthropic messages
       api: BASE,
       models: DEFAULT_MODELS,
     }
@@ -145,7 +148,7 @@ export const SyntheticPlugin = async () => ({
     id: PROVIDER,
     async models(provider, { auth } = {}) {
       if (auth?.type !== "api") return provider.models
-      const res = await fetch(`${BASE}/models`, { headers: { authorization: `Bearer ${auth.key}` } })
+      const res = await fetch(MODELS_URL, { headers: { authorization: `Bearer ${auth.key}` } })
       if (!res.ok) return provider.models // magpie keeps the list it had
       const { data } = await res.json()
       if (!Array.isArray(data) || data.length === 0) return provider.models
