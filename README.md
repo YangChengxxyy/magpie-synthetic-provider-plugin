@@ -25,7 +25,7 @@ magpie quota                    # synthetic · 5h n% ↻… · weekly n% ↻…
 ## API used
 
 - Chat: `https://api.synthetic.new/anthropic/v1` (Anthropic Messages; `@ai-sdk/anthropic`)
-- Models: `GET https://api.synthetic.new/openai/v1/models` per account (the anthropic endpoint has no `/models` route), falling back to the `syn:*` aliases
+- Models: `GET https://api.synthetic.new/openai/v1/models` per account (the anthropic endpoint has no `/models` route). The anthropic API only accepts `hf:`-prefixed model ids, so alias keys (`syn:*`, `infinite:*`) send their concrete `hf:` target as the wire id; falls back to the `syn:*` aliases
 - Quotas: `GET https://api.synthetic.new/v2/quotas`
 
 ## Development
