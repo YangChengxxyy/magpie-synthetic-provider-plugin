@@ -23,6 +23,9 @@ const quotaBody = (body) => (body && typeof body === "object" && body.data && ty
 
 const pct = (used, max) => Math.round((used / max) * 100)
 
+// Quota counters refill fractionally (e.g. 5% per 15 min); round for display.
+const num = (n) => (typeof n === "number" ? Math.round(n * 10) / 10 : n)
+
 // GET /v2/quotas -> magpie usage result.
 // Response shape (all sections optional):
 //   subscription:        { limit, requests, renewsAt }              legacy per-billing-period counter
@@ -42,7 +45,7 @@ function quotasToUsage(body) {
       used: pct(usedReqs, five.max),
       resetsAt: five.nextTickAt,
       span: 5 * HOUR,
-      display: `${usedReqs} / ${five.max} requests`,
+      display: `${num(usedReqs)} / ${num(five.max)} requests`,
     })
   }
 
@@ -56,7 +59,7 @@ function quotasToUsage(body) {
       span: 7 * DAY,
       display:
         weekly.remainingCredits && weekly.maxCredits
-          ? `${weekly.remainingCredits} / ${weekly.maxCredits} credits`
+          ? `${num(weekly.remainingCredits)} / ${num(weekly.maxCredits)} credits`
           : `${Math.round(weekly.percentRemaining)}% credits remaining`,
     })
   }

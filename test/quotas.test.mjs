@@ -56,6 +56,13 @@ test("body nested under data is unwrapped", () => {
   assert.equal(windows[0].used, 100)
 })
 
+test("fractional remaining refills round to one decimal in display", () => {
+  const { windows } = quotasToUsage({
+    rollingFiveHourLimit: { remaining: 447.80000000000001, max: 500, nextTickAt: "x" },
+  })
+  assert.equal(windows[0].display, "52.2 / 500 requests")
+})
+
 test("empty and malformed responses yield no windows", () => {
   assert.deepEqual(quotasToUsage({}), { windows: [] })
   assert.deepEqual(quotasToUsage(null), { windows: [] })
