@@ -1,6 +1,6 @@
 {
   "name": "magpie-synthetic-provider-plugin",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "magpie / OpenCode provider plugin: Synthetic (synthetic.new) with quota reporting",
   "type": "module",
   "main": "./index.mjs",

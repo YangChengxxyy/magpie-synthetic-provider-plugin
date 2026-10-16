@@ -1,8 +1,5 @@
 const PROVIDER = "synthetic"
-const BASE = "https://api.synthetic.new/anthropic/v1"
-// The anthropic endpoint has no /models route; the account model list still
-// comes from the openai-compatible one.
-const MODELS_URL = "https://api.synthetic.new/openai/v1/models"
+const BASE = "https://api.synthetic.new/openai/v1"
 const QUOTAS_URL = "https://api.synthetic.new/v2/quotas"
 
 const HOUR = 3600
@@ -10,13 +7,11 @@ const DAY = 24 * HOUR
 
 // Models shown before anyone signs in; the provider.models hook replaces
 // this list with the account's real one once an API key is stored.
-// The anthropic endpoint only accepts hf:-prefixed model ids, so each alias
-// carries its last-known target as id; the models hook refreshes it live.
 const DEFAULT_MODELS = {
-  "syn:large:text": { name: "Synthetic Large (text)", id: "hf:deepseek-ai/DeepSeek-V4.1-Flash", limit: { context: 256000, output: 32768 }, tool_call: true },
-  "syn:small:text": { name: "Synthetic Small (text)", id: "hf:zai-org/GLM-4.7-Flash", limit: { context: 196608, output: 32768 }, tool_call: true },
-  "syn:large:vision": { name: "Synthetic Large (vision)", id: "hf:moonshotai/Kimi-K3", limit: { context: 256000, output: 32768 }, tool_call: true },
-  "syn:small:vision": { name: "Synthetic Small (vision)", id: "hf:Qwen/Qwen3.8-27B-FP8", limit: { context: 256000, output: 32768 }, tool_call: true },
+  "syn:large:text": { name: "Synthetic Large (text)", limit: { context: 256000, output: 32768 }, tool_call: true },
+  "syn:small:text": { name: "Synthetic Small (text)", limit: { context: 256000, output: 32768 }, tool_call: true },
+  "syn:large:vision": { name: "Synthetic Large (vision)", limit: { context: 256000, output: 32768 }, tool_call: true },
+  "syn:small:vision": { name: "Synthetic Small (vision)", limit: { context: 256000, output: 32768 }, tool_call: true },
 }
 
 const quotaBody = (body) => (body && typeof body === "object" && body.data && typeof body.data === "object" ? body.data : body) || {}
@@ -115,7 +110,7 @@ export const SyntheticPlugin = async () => ({
     cfg.provider ??= {}
     cfg.provider[PROVIDER] ??= {
       name: "Synthetic",
-      npm: "@ai-sdk/anthropic", // anthropic messages
+      npm: "@ai-sdk/openai-compatible", // chat completions
       api: BASE,
       models: DEFAULT_MODELS,
     }
@@ -150,28 +145,21 @@ export const SyntheticPlugin = async () => ({
     id: PROVIDER,
     async models(provider, { auth } = {}) {
       if (auth?.type !== "api") return provider.models
-      const res = await fetch(MODELS_URL, { headers: { authorization: `Bearer ${auth.key}` } })
+      const res = await fetch(`${BASE}/models`, { headers: { authorization: `Bearer ${auth.key}` } })
       if (!res.ok) return provider.models // magpie keeps the list it had
       const { data } = await res.json()
       if (!Array.isArray(data) || data.length === 0) return provider.models
-      const fallback = provider.models["syn:large:text"] ?? Object.values(provider.models)[0] ?? {}
+      const base = provider.models["syn:large:text"] ?? Object.values(provider.models)[0] ?? {}
       return Object.fromEntries(
-        data.map((m) => {
-          const base = provider.models[m.id] ?? fallback
-          return [
-            m.id,
-            {
-              ...base,
-              // The anthropic endpoint rejects non-hf: model ids; aliases keep
-              // their list key but send the concrete model on the wire.
-              id: m.id.startsWith("hf:") ? m.id : `hf:${m.hugging_face_id ?? m.id}`,
-              name: provider.models[m.id]?.name ?? m.display_name ?? m.name ?? m.id,
-              ...(m.context_length
-                ? { limit: { context: m.context_length, output: m.max_output_length ?? m.context_length } }
-                : {}),
-            },
-          ]
-        }),
+        data.map((m) => [
+          m.id,
+          {
+            ...base,
+            id: m.id,
+            name: m.name ?? m.id,
+            ...(m.context_length ? { limit: { context: m.context_length, output: m.context_length } } : {}),
+          },
+        ]),
       )
     },
   },
