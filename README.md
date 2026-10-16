@@ -24,8 +24,8 @@ magpie quota                    # synthetic · 5h n% ↻… · weekly n% ↻…
 
 ## API used
 
-- Chat: `https://api.synthetic.new/openai/v1` (OpenAI-compatible chat completions)
-- Models: `GET /models` per account, falling back to the `syn:*` aliases
+- Chat: `https://api.synthetic.new/anthropic/v1` (Anthropic Messages; `@ai-sdk/anthropic`). magpie injects the key itself as `x-api-key`
+- Models: `GET https://api.synthetic.new/openai/v1/models` per account (the anthropic endpoint has no `/models` route). The anthropic API only accepts catalog `hf:` model ids, so alias keys (`syn:*`, `infinite:*`) send the `hf:` id of the catalog entry with the same `hugging_face_id`; falls back to the `syn:*` aliases
 - Quotas: `GET https://api.synthetic.new/v2/quotas`
 
 ## Development

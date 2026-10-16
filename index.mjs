@@ -1,5 +1,8 @@
 const PROVIDER = "synthetic"
-const BASE = "https://api.synthetic.new/openai/v1"
+const BASE = "https://api.synthetic.new/anthropic/v1"
+// The anthropic endpoint has no /models route; the account model list still
+// comes from the openai-compatible one.
+const MODELS_URL = "https://api.synthetic.new/openai/v1/models"
 const QUOTAS_URL = "https://api.synthetic.new/v2/quotas"
 
 const HOUR = 3600
@@ -7,11 +10,13 @@ const DAY = 24 * HOUR
 
 // Models shown before anyone signs in; the provider.models hook replaces
 // this list with the account's real one once an API key is stored.
+// The anthropic endpoint only accepts hf:-prefixed catalog ids, so each
+// alias carries its last-known catalog target as id; the hook refreshes it.
 const DEFAULT_MODELS = {
-  "syn:large:text": { name: "Synthetic Large (text)", limit: { context: 256000, output: 32768 }, tool_call: true },
-  "syn:small:text": { name: "Synthetic Small (text)", limit: { context: 256000, output: 32768 }, tool_call: true },
-  "syn:large:vision": { name: "Synthetic Large (vision)", limit: { context: 256000, output: 32768 }, tool_call: true },
-  "syn:small:vision": { name: "Synthetic Small (vision)", limit: { context: 256000, output: 32768 }, tool_call: true },
+  "syn:large:text": { name: "Synthetic Large (text)", id: "hf:deepseek-ai/DeepSeek-V4.1-Flash", limit: { context: 256000, output: 32768 }, tool_call: true },
+  "syn:small:text": { name: "Synthetic Small (text)", id: "hf:zai-org/GLM-4.7-Flash", limit: { context: 256000, output: 32768 }, tool_call: true },
+  "syn:large:vision": { name: "Synthetic Large (vision)", id: "hf:moonshotai/Kimi-K3", limit: { context: 256000, output: 32768 }, tool_call: true },
+  "syn:small:vision": { name: "Synthetic Small (vision)", id: "hf:Qwen/Qwen3.8-27B", limit: { context: 256000, output: 32768 }, tool_call: true },
 }
 
 const quotaBody = (body) => (body && typeof body === "object" && body.data && typeof body.data === "object" ? body.data : body) || {}
@@ -110,7 +115,7 @@ export const SyntheticPlugin = async () => ({
     cfg.provider ??= {}
     cfg.provider[PROVIDER] ??= {
       name: "Synthetic",
-      npm: "@ai-sdk/openai-compatible", // chat completions
+      npm: "@ai-sdk/anthropic", // anthropic messages
       api: BASE,
       models: DEFAULT_MODELS,
     }
@@ -123,14 +128,9 @@ export const SyntheticPlugin = async () => ({
     async loader(getAuth) {
       const auth = await getAuth()
       if (auth?.type !== "api") return {}
-      return {
-        baseURL: BASE,
-        async fetch(input, init) {
-          const headers = new Headers(init?.headers)
-          headers.set("authorization", `Bearer ${auth.key}`)
-          return fetch(input, { ...init, headers })
-        },
-      }
+      // magpie sends the key itself (x-api-key for @ai-sdk/anthropic) and the
+      // provider's api is the request base — nothing to add.
+      return { apiKey: auth.key }
     },
 
     // magpie's own hook: how much of the subscription is used
@@ -145,19 +145,26 @@ export const SyntheticPlugin = async () => ({
     id: PROVIDER,
     async models(provider, { auth } = {}) {
       if (auth?.type !== "api") return provider.models
-      const res = await fetch(`${BASE}/models`, { headers: { authorization: `Bearer ${auth.key}` } })
+      const res = await fetch(MODELS_URL, { headers: { authorization: `Bearer ${auth.key}` } })
       if (!res.ok) return provider.models // magpie keeps the list it had
       const { data } = await res.json()
       if (!Array.isArray(data) || data.length === 0) return provider.models
-      const base = provider.models["syn:large:text"] ?? Object.values(provider.models)[0] ?? {}
+      // The anthropic endpoint only accepts catalog hf: ids; resolve aliases
+      // through hugging_face_id so syn:* keys send a valid wire id.
+      const catalogId = new Map(
+        data.filter((m) => m.id?.startsWith("hf:") && m.hugging_face_id).map((m) => [m.hugging_face_id, m.id]),
+      )
+      const fallback = provider.models["syn:large:text"] ?? Object.values(provider.models)[0] ?? {}
       return Object.fromEntries(
         data.map((m) => [
           m.id,
           {
-            ...base,
-            id: m.id,
-            name: m.name ?? m.id,
-            ...(m.context_length ? { limit: { context: m.context_length, output: m.context_length } } : {}),
+            ...(provider.models[m.id] ?? fallback),
+            id: m.id.startsWith("hf:") ? m.id : (catalogId.get(m.hugging_face_id) ?? `hf:${m.hugging_face_id ?? m.id}`),
+            name: provider.models[m.id]?.name ?? m.display_name ?? m.name ?? m.id,
+            ...(m.context_length
+              ? { limit: { context: m.context_length, output: m.max_output_length ?? m.context_length } }
+              : {}),
           },
         ]),
       )
